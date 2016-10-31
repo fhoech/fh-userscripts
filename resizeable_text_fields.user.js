@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name           Resizeable Text Fields
 // @namespace      http://userscripts.org/scripts/show/42433
-// @description    Based on Resizeable Textarea 0.1 (https://addons.mozilla.org/de/firefox/addon/3818), original coding by Raik Jürgens. Added support for select lists and horizontal resizing of input fields by Florian Höch. Should now work on all page types (XML/XHTML/you-name-it).
+// @description    Based on Resizeable Textarea 0.1 (https://addons.mozilla.org/de/firefox/addon/3818), original coding by Raik Jürgens. Added support for select lists, preformatted text, TinyMCE editor area resizing and horizontal resizing of input fields by Florian Höch. Should work on all page types (XML/XHTML/you-name-it).
 // @include        *
-// @version     $Id:$
+// @version     $Id$
 // ==/UserScript==
 
 window.resizeableTF =

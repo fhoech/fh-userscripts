@@ -1,8 +1,9 @@
 // ==UserScript==
 // @name        Pop-Up Blocker
 // @namespace   HTML
+// @description Simple but effective popup window blocker
 // @include     *
-// @version     $Id:$
+// @version     $Id$
 // ==/UserScript==
 
 (function () {
