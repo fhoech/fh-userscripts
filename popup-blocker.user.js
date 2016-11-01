@@ -35,7 +35,7 @@
 				Date.now() < ts + grant_period)
 			return 'You are possibly involuntarily being redirected to another page. Do you want to leave ' + location.href + ' or stay?';
 		else if (typeof onbeforeunload === 'function')
-			return onbeforeunload();
+			return onbeforeunload.apply(window, arguments);
 	};
 
 	function confirmPopup(msg, args) {
