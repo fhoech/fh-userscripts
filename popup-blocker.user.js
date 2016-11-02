@@ -18,12 +18,12 @@
 
 	window.addEventListener('mousedown', function (e) {
 		ts = Date.now();
-		lastClickedElement = e.target;
+		lastClickedElement = e.currentTarget;
 	}, true);
 
 	window.addEventListener('click', function (e) {
 		ts = Date.now();
-		lastClickedElement = e.target;
+		lastClickedElement = e.currentTarget;
 	}, true);
 
 	// Deny unsolicited redirection
@@ -31,7 +31,7 @@
 	window.onbeforeunload = function () {
 		// Check if the last clicked element was a link or button, otherwise make browser ask if the user really wants to leave the page
 		if (lastClickedElement &&
-				!{'a': 1, 'button': 1}[lastClickedElement.tagName.toLowerCase()] &&
+				!{'a': 1, 'button': 1, 'input': 1}[lastClickedElement.tagName.toLowerCase()] &&
 				Date.now() < ts + grant_period)
 			return 'You are possibly involuntarily being redirected to another page. Do you want to leave ' + location.href + ' or stay?';
 		else if (typeof onbeforeunload === 'function')
