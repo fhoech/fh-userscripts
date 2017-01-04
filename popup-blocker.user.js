@@ -104,7 +104,7 @@
 				 (lastInteractedElement.tagName &&
 				  (!allowed_elements[lastInteractedElement.tagName.toLowerCase()] ||
 				   (lastInteractedElement.tagName.toLowerCase() == 'a' &&
-				    (newval_boileddown != href_boileddown ||
+				    ((newval_boileddown && newval_boileddown != href_boileddown) ||
 				     lastInteractedElement.target == '_blank')))) ||
 				 Date.now() > ts + grant_period)) {
 				if (debug) {
@@ -214,7 +214,7 @@
 				notification = document.createElement('div');
 		if (marginTop === null) marginTop = parseFloat((rootElement.currentStyle || window.getComputedStyle(rootElement)).marginTop)
 		resetStyles(notification);
-		notification.style.cssText = 'background: InfoBackground !important';
+		notification.style.cssText += 'background: InfoBackground !important';
 		notification.style.cssText += 'border-bottom: 1px solid WindowFrame !important';
 		notification.style.cssText += 'box-sizing: border-box !important';
 		notification.style.cssText += 'font: small-caption !important';
@@ -255,7 +255,7 @@
 			var popupLink = document.createElement(!i ? 'a' : 'button');
 			resetStyles(popupLink);
 			if (i) {
-				popupLink.style.cssText = '-moz-appearance: button !important';
+				popupLink.style.cssText += '-moz-appearance: button !important';
 				popupLink.style.cssText += '-webkit-appearance: button !important';
 				popupLink.style.cssText += 'appearance: button !important';
 				popupLink.style.cssText += 'font: small-caption !important';
@@ -324,6 +324,7 @@
 		element.style.cssText += 'position: static !important';
 		element.style.cssText += 'text-align: left !important';
 		element.style.cssText += 'text-shadow: none !important';
+		element.style.cssText += 'text-transform: none !important';
 		element.style.cssText += 'left: auto !important';
 		element.style.cssText += 'right: auto !important';
 		element.style.cssText += 'top: auto !important';
