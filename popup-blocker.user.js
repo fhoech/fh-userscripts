@@ -75,13 +75,12 @@
 			replace(/\x08/g, '\\x08');
 	};
 
-	var regExpProtHostPathQ = new RegExp('^(' + regExpEscape(location.protocol) + '//' +
-										   '(' + regExpEscape(location.host) +
-										    '(' + regExpEscape(location.pathname) + ')))?');
+	var regExpProtHostPathQ = new RegExp('^((' + regExpEscape(location.protocol) + '//' + regExpEscape(location.host) + ')?' +
+										    '(' + regExpEscape(location.pathname) + ')?)?');
 
 	function boildown(uri) {
 		var uri_boileddown = uri.replace(regExpProtHostPathQ, '');  // Strip current protocol + host + path
-		uri_boileddown = uri_boileddown.replace(/#[^#]*$/, '');  // Strip any hash
+		uri_boileddown = uri_boileddown.replace(/#.*$/, '');  // Strip any hash
 		// Sort query vars
 		var query = uri_boileddown.match(/\?[^?]+/);
 		if (query)
@@ -99,14 +98,16 @@
 			if (lastInteractedElement && lastInteractedElement.tagName &&
 				lastInteractedElement.tagName.toLowerCase() == 'a')
 				href_boileddown = boildown(lastInteractedElement.href);
+			var grantperiod_exceeded = (Date.now() > ts + grant_period && (href_boileddown != undefined && newval_boileddown != href_boileddown));
+				
 			if ((block_mode & BLOCK_MODE.INSECURE ? location.protocol != 'https:' : true) &&
 				(!lastInteractedElement ||
 				 (lastInteractedElement.tagName &&
 				  (!allowed_elements[lastInteractedElement.tagName.toLowerCase()] ||
 				   (lastInteractedElement.tagName.toLowerCase() == 'a' &&
-				    ((newval_boileddown && newval_boileddown != href_boileddown) ||
+				    ((href_boileddown != undefined && newval_boileddown != href_boileddown) ||
 				     lastInteractedElement.target == '_blank')))) ||
-				 Date.now() > ts + grant_period)) {
+				 grantperiod_exceeded)) {
 				if (debug) {
 					console.info('Page secure?', location.protocol == 'https:');
 					console.info('Allow insecure page?', block_mode & BLOCK_MODE.INSECURE ? false : true);
@@ -124,7 +125,7 @@
 							}
 						}
 					}
-					console.info('Grant period exceeded?', Date.now() > ts + grant_period);
+					console.info('Grant period exceeded?', grantperiod_exceeded);
 				}
 				notify('Denied redirection to', newval, null, 0, null, '_self');
 				throw new Error('Pop-Up Blocker denied redirection to ' + newval);
