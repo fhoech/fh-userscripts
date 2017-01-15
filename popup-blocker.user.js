@@ -98,14 +98,15 @@
 			if (lastInteractedElement && lastInteractedElement.tagName &&
 				lastInteractedElement.tagName.toLowerCase() == 'a')
 				href_boileddown = boildown(lastInteractedElement.href);
-			var grantperiod_exceeded = (Date.now() > ts + grant_period && (href_boileddown != undefined && newval_boileddown != href_boileddown));
+			var link_hijacked = href_boileddown != undefined && newval.indexOf('#') !== 0 && newval_boileddown != href_boileddown;
+				grantperiod_exceeded = (Date.now() > ts + grant_period && link_hijacked);
 				
 			if ((block_mode & BLOCK_MODE.INSECURE ? location.protocol != 'https:' : true) &&
 				(!lastInteractedElement ||
 				 (lastInteractedElement.tagName &&
 				  (!allowed_elements[lastInteractedElement.tagName.toLowerCase()] ||
 				   (lastInteractedElement.tagName.toLowerCase() == 'a' &&
-				    ((href_boileddown != undefined && newval_boileddown != href_boileddown) ||
+				    (link_hijacked ||
 				     lastInteractedElement.target == '_blank')))) ||
 				 grantperiod_exceeded)) {
 				if (debug) {
@@ -128,7 +129,8 @@
 					console.info('Grant period exceeded?', grantperiod_exceeded);
 				}
 				notify('Denied redirection to', newval, null, 0, null, '_self');
-				throw new Error('Pop-Up Blocker denied redirection to ' + newval);
+				console.error('Pop-Up Blocker denied redirection to ' + newval);
+				return '#' + location.hash.replace(/^#/, '');
 			}
 			return newval;
 		}
