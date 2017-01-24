@@ -15,10 +15,10 @@
 	// Configuration
 	var block_mode = BLOCK_MODE.GRANT_PERIOD | BLOCK_MODE.INSECURE;
 	var grant_period = 100;  // Milliseconds
-	var debug = false;  // Enable debug logging
+	var debug = true;  // Enable debug logging
 
 	// DO NOT CHANGE BELOW THIS POINT
-	var allowed_elements = {'a': 1, 'button': 1, 'input': 1, 'select': 1, 'option': 1};
+	var allowed_elements = {'a': 1, 'button': 0, 'input': 1, 'select': 1, 'option': 1};
 	var ts = 0, wopen = window.open, showmodaldlg = window.showModalDialog;
 	var lastInteractedElement;
 	var marginTop = null;
@@ -101,6 +101,25 @@
 			var link_hijacked = href_boileddown != undefined && newval.indexOf('#') !== 0 && newval_boileddown != href_boileddown;
 				grantperiod_exceeded = (Date.now() > ts + grant_period && link_hijacked);
 				
+			if (debug) {
+				console.info('Page secure?', location.protocol == 'https:');
+				console.info('Allow insecure page?', block_mode & BLOCK_MODE.INSECURE ? false : true);
+				console.info('Last interacted element?', lastInteractedElement);
+				if (lastInteractedElement) {
+					console.info('Last interacted element tag name?', lastInteractedElement.tagName);
+					if (lastInteractedElement.tagName) {
+						console.info('Allowed element?', !!allowed_elements[lastInteractedElement.tagName.toLowerCase()]);
+						console.info('Last interacted element is link?', lastInteractedElement.tagName.toLowerCase() == 'a');
+						if (lastInteractedElement.tagName.toLowerCase() == 'a') {
+							console.info('New location (boiled down) =', newval_boileddown);
+							console.info('Link HREF (boiled down) =', href_boileddown);
+							console.info('New location is the same as link HREF?', newval_boileddown == href_boileddown);
+							console.info('Link target is a new window?', lastInteractedElement.target == '_blank');
+						}
+					}
+				}
+				console.info('Grant period exceeded?', grantperiod_exceeded);
+			}
 			if ((block_mode & BLOCK_MODE.INSECURE ? location.protocol != 'https:' : true) &&
 				(!lastInteractedElement ||
 				 (lastInteractedElement.tagName &&
@@ -109,25 +128,6 @@
 				    (link_hijacked ||
 				     lastInteractedElement.target == '_blank')))) ||
 				 grantperiod_exceeded)) {
-				if (debug) {
-					console.info('Page secure?', location.protocol == 'https:');
-					console.info('Allow insecure page?', block_mode & BLOCK_MODE.INSECURE ? false : true);
-					console.info('Last interacted element?', lastInteractedElement);
-					if (lastInteractedElement) {
-						console.info('Last interacted element tag name?', lastInteractedElement.tagName);
-						if (lastInteractedElement.tagName) {
-							console.info('Allowed element?', !!allowed_elements[lastInteractedElement.tagName.toLowerCase()]);
-							console.info('Last interacted element is link?', lastInteractedElement.tagName.toLowerCase() == 'a');
-							if (lastInteractedElement.tagName.toLowerCase() == 'a') {
-								console.info('New location (boiled down) =', newval_boileddown);
-								console.info('Link HREF (boiled down) =', href_boileddown);
-								console.info('New location is the same as link HREF?', newval_boileddown == href_boileddown);
-								console.info('Link target is a new window?', lastInteractedElement.target == '_blank');
-							}
-						}
-					}
-					console.info('Grant period exceeded?', grantperiod_exceeded);
-				}
 				notify('Denied redirection to', newval, null, 0, null, '_self');
 				console.error('Pop-Up Blocker denied redirection to ' + newval);
 				return '#' + location.hash.replace(/^#/, '');
@@ -312,9 +312,11 @@
 	}
 
 	function resetStyles(element) {
-		element.style.cssText = 'background: transparent !important';
-		element.style.cssText += 'border: none !important';
-		element.style.cssText += 'border-radius: 0 !important';
+		if (element.tagName.toLowerCase() != 'button') {
+			element.style.cssText = 'background: transparent !important';
+			element.style.cssText += 'border: none !important';
+			element.style.cssText += 'border-radius: 0 !important';
+		}
 		element.style.cssText += 'bottom: auto !important';
 		element.style.cssText += 'box-shadow: none !important';
 		element.style.cssText += 'color: WindowText !important';
