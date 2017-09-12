@@ -13,17 +13,37 @@
 										'INSECURE': 8}  // Block popups from insecure (HTTP) sites
 
 	// Configuration
-	var block_mode = BLOCK_MODE.GRANT_PERIOD | BLOCK_MODE.INSECURE;
+	var block_mode = BLOCK_MODE.ALL;
 	var grant_period = 100;  // Milliseconds
 	var debug = true;  // Enable debug logging
 
 	// DO NOT CHANGE BELOW THIS POINT
-	var allowed_elements = {'a': 1, 'button': 0, 'input': 1, 'select': 1, 'option': 1};
+	var allowed_elements = {'a': true, 'button': {'type': 'submit'}, 'input': true, 'select': true, 'option': true};
 	var ts = 0, wopen = window.open, showmodaldlg = window.showModalDialog;
 	var lastInteractedElement;
 	var marginTop = null;
 	var notifications = 0;
 	var notificationOffsetTop = 0;
+
+	function confirmed(msg, arguments) {
+		return block_mode & BLOCK_MODE.CONFIRM ? confirmPopup(msg, arguments) : false;
+	}
+
+	function grantperiod_exceeded() {
+		return block_mode & BLOCK_MODE.GRANT_PERIOD ? Date.now() > ts + grant_period : true;
+	}
+
+	function protocol_allowed() {
+		return block_mode & BLOCK_MODE.INSECURE ? location.protocol == 'https:' : false;
+	}
+
+	function element_allowed(element) {
+		var allowed = element.tagName && allowed_elements[element.tagName.toLowerCase()];
+		if (allowed && typeof allowed == "object") {
+			for (var property in allowed) if (element[property] != element[property]) return false;
+		}
+		return allowed;
+	}
 
 	window.addEventListener('mousedown', function (event) {
 		ts = Date.now();
@@ -50,7 +70,7 @@
 		// Deal with tags nested in (e.g.) links
 		var element = event.target;
 		if (event instanceof MouseEvent && (event.button != null ? event.button != 0 : event.which != 1)) return;
-		while (element.parentElement && element.tagName && !allowed_elements[element.tagName.toLowerCase()]) {
+		while (element.parentElement && !element_allowed(element)) {
 			element = element.parentElement;
 		}
 		lastInteractedElement = element;
@@ -60,7 +80,7 @@
 	function mediateEventPropagation(event) {
 		// Stop event propagation if element has a 'href' attribute that does not point to the current document
 		// (prevents click hijacking)
-		if ((block_mode & BLOCK_MODE.INSECURE ? location.protocol != 'https:' : true) &&
+		if (!protocol_allowed() &&
 			lastInteractedElement &&
 			lastInteractedElement.href &&
 			boildown(lastInteractedElement.href) != boildown(window.location.href) &&
@@ -99,16 +119,15 @@
 				lastInteractedElement.tagName.toLowerCase() == 'a')
 				href_boileddown = boildown(lastInteractedElement.href);
 			var link_hijacked = href_boileddown != undefined && newval.indexOf('#') !== 0 && newval_boileddown != href_boileddown;
-				grantperiod_exceeded = (Date.now() > ts + grant_period && link_hijacked);
 				
 			if (debug) {
 				console.info('Page secure?', location.protocol == 'https:');
-				console.info('Allow insecure page?', block_mode & BLOCK_MODE.INSECURE ? false : true);
+				if (block_mode & BLOCK_MODE.INSECURE) console.info('Allowed protocol?', protocol_allowed());
 				console.info('Last interacted element?', lastInteractedElement);
 				if (lastInteractedElement) {
 					console.info('Last interacted element tag name?', lastInteractedElement.tagName);
 					if (lastInteractedElement.tagName) {
-						console.info('Allowed element?', !!allowed_elements[lastInteractedElement.tagName.toLowerCase()]);
+						console.info('Allowed element?', !!element_allowed(lastInteractedElement));
 						console.info('Last interacted element is link?', lastInteractedElement.tagName.toLowerCase() == 'a');
 						if (lastInteractedElement.tagName.toLowerCase() == 'a') {
 							console.info('New location (boiled down) =', newval_boileddown);
@@ -118,16 +137,15 @@
 						}
 					}
 				}
-				console.info('Grant period exceeded?', grantperiod_exceeded);
+				if (block_mode & BLOCK_MODE.GRANT_PERIOD) console.info('Grant period exceeded?', grantperiod_exceeded());
 			}
-			if ((block_mode & BLOCK_MODE.INSECURE ? location.protocol != 'https:' : true) &&
+			if (!protocol_allowed() &&
 				(!lastInteractedElement ||
-				 (lastInteractedElement.tagName &&
-				  (!allowed_elements[lastInteractedElement.tagName.toLowerCase()] ||
-				   (lastInteractedElement.tagName.toLowerCase() == 'a' &&
-				    (link_hijacked ||
-				     lastInteractedElement.target == '_blank')))) ||
-				 grantperiod_exceeded)) {
+				 (!element_allowed(lastInteractedElement) ||
+				  (/*lastInteractedElement.tagName.toLowerCase() == 'a' &&*/
+				   (link_hijacked ||
+				    lastInteractedElement.target == '_blank'))) ||
+				 grantperiod_exceeded())) {
 				notify('Denied redirection to', newval, null, 0, null, '_self');
 				console.error('Pop-Up Blocker denied redirection to ' + newval);
 				return '#' + location.hash.replace(/^#/, '');
@@ -137,50 +155,65 @@
 	);
 
 	var onbeforeunload = window.onbeforeunload;
-	window.onbeforeunload = function () {
+	window.onbeforeunload = function (e) {
+		if (debug) console.info('window.', e);
 		// Check if the last interacted element was a link or button, otherwise make browser ask if the user really wants to leave the page
-		if (lastInteractedElement && lastInteractedElement.tagName &&
-				!allowed_elements[lastInteractedElement.tagName.toLowerCase()] &&
-				(block_mode & BLOCK_MODE.INSECURE ? location.protocol != 'https:' : true) && Date.now() <= ts + grant_period) {
+		if (lastInteractedElement &&
+				!element_allowed(lastInteractedElement) &&
+				!protocol_allowed() && grantperiod_exceeded()) {
 			if (debug) {
 				console.info('Page secure?', location.protocol == 'https:');
-				console.info('Allow insecure page?', block_mode & BLOCK_MODE.INSECURE ? false : true);
+				if (block_mode & BLOCK_MODE.INSECURE) console.info('Allowed protocol?', protocol_allowed());
 					console.info('Last interacted element?', lastInteractedElement);
 					if (lastInteractedElement) {
 						console.info('Last interacted element tag name?', lastInteractedElement.tagName);
 						if (lastInteractedElement.tagName) {
-							console.info('Allowed element?', !!allowed_elements[lastInteractedElement.tagName.toLowerCase()]);
+							console.info('Allowed element?', !!element_allowed(lastInteractedElement));
 						}
 					}
-					console.info('Grant period exceeded?', Date.now() > ts + grant_period);
+					if (block_mode & BLOCK_MODE.GRANT_PERIOD) console.info('Grant period exceeded?', grantperiod_exceeded());
 			}
-			return 'You are possibly involuntarily being redirected to another page. Do you want to leave ' + location.href + ' or stay?';
+			console.warn('You are possibly involuntarily being redirected to another page.');
+			(e || window.event).returnValue = 'You are possibly involuntarily being redirected to another page. Do you want to leave ' + location.href + ' or stay?';
+			return (e || window.event).returnValue;
 		}
 		else if (typeof onbeforeunload === 'function')
 			return onbeforeunload.apply(window, arguments);
 	};
 
+	var onkeydown = window.onkeydown;
+	window.onkeydown = function (e) {
+		lastInteractedElement = null;
+		if (typeof onkeydown === 'function')
+			return onkeydown.apply(window, arguments);
+	};
+
+	var onmouseleave = document.body.onmouseleave;
+	document.body.onmouseleave = function (e) {
+		lastInteractedElement = null;
+		if (typeof onmouseleave === 'function')
+			return onmouseleave.apply(document.body, arguments);
+	};
+
 	function confirmPopup(msg, args) {
-		confirm(msg + ' (' + Array.prototype.slice.apply(arguments).join(', ') + ')');
+		return confirm(msg + ' (' + Array.prototype.slice.apply(arguments).join(', ') + ')');
 	}
 
 	window.open = function () {
 		var oargs = arguments;
 		if (debug) {
 			console.info('Page secure?', location.protocol == 'https:');
-			console.info('Allow insecure page?', block_mode & BLOCK_MODE.INSECURE ? false : true);
-			console.info('Grant period exceeded?', Date.now() > ts + grant_period);
+			if (block_mode & BLOCK_MODE.INSECURE) console.info('Allowed protocol?', protocol_allowed());
+			if (block_mode & BLOCK_MODE.GRANT_PERIOD) console.info('Grant period exceeded?', grantperiod_exceeded());
 		}
-		if (['_self', '_parent', '_top'].includes(arguments[1]) ||
-			(block_mode != BLOCK_MODE.ALL &&
-				(block_mode & BLOCK_MODE.CONFIRM
-				 ? confirmPopup('Allow popup?', arguments)
-				 : (block_mode & BLOCK_MODE.INSECURE ? location.protocol == 'https:' : true) && Date.now() <= ts + grant_period))) {
+		if (/*['_self', '_parent', '_top'].includes(arguments[1]) ||*/
+			(confirmed('Allow popup?', arguments) &&
+			 (protocol_allowed() || !grantperiod_exceeded()))) {
 			console.info('Pop-Up Blocker allowed window.open', Array.prototype.slice.apply(arguments));
 			return wopen.apply(window, arguments);
 		}
 		else {
-			console.warn('Pop-Up Blocker blocked window.open', Array.prototype.slice.apply(arguments));
+			console.error('Pop-Up Blocker blocked window.open', Array.prototype.slice.apply(arguments));
 			notify('Blocked popup window', arguments[0], arguments[1], 0, function() {
 				console.info('Pop-Up Blocker user clicked window.open', Array.prototype.slice.apply(oargs));
 				wopen.apply(window, oargs);
@@ -192,18 +225,16 @@
 	window.showModalDialog = function () {
 		if (debug) {
 			console.info('Page secure?', location.protocol == 'https:');
-			console.info('Allow insecure page?', block_mode & BLOCK_MODE.INSECURE ? false : true);
-			console.info('Grant period exceeded?', Date.now() > ts + grant_period);
+			if (block_mode & BLOCK_MODE.INSECURE) console.info('Allowed protocol?', protocol_allowed());
+			if (block_mode & BLOCK_MODE.GRANT_PERIOD) console.info('Grant period exceeded?', grantperiod_exceeded());
 		}
-		if (block_mode != BLOCK_MODE.ALL &&
-				(block_mode & BLOCK_MODE.CONFIRM
-				 ? confirmPopup('Allow modal dialog?', arguments)
-				 : (block_mode & BLOCK_MODE.INSECURE ? location.protocol == 'https:' : true) && Date.now() <= ts + grant_period)) {
+		if (confirmed('Allow modal dialog?', arguments) &&
+			(protocol_allowed() || !grantperiod_exceeded())) {
 			console.info('Pop-Up Blocker allowed window.showModalDialog', Array.prototype.slice.apply(arguments));
 			return showmodaldlg.apply(window, arguments);
 		}
 		else {
-			console.warn('Pop-Up Blocker blocked modal showModalDialog', Array.prototype.slice.apply(arguments));
+			console.error('Pop-Up Blocker blocked modal showModalDialog', Array.prototype.slice.apply(arguments));
 			notify('Blocked modal dialog', arguments[0], null, 0, function() {
 				console.info('Pop-Up Blocker user clicked window.showModalDialog', Array.prototype.slice.apply(oargs));
 				showmodaldlg.apply(window, oargs);
@@ -215,6 +246,9 @@
 	function notify(text, uri, title, timeout, onclick, target) {
 		var rootElement = document.body.parentElement,
 				notification = document.createElement('div');
+		notification.onclick = function () {
+			return false;
+		}
 		if (marginTop === null) marginTop = parseFloat((rootElement.currentStyle || window.getComputedStyle(rootElement)).marginTop)
 		resetStyles(notification);
 		notification.style.cssText += 'background: InfoBackground !important';
@@ -261,7 +295,11 @@
 				popupLink.style.cssText += '-moz-appearance: button !important';
 				popupLink.style.cssText += '-webkit-appearance: button !important';
 				popupLink.style.cssText += 'appearance: button !important';
+				popupLink.style.cssText += 'background: ButtonFace !important';
+				popupLink.style.cssText += 'border: 1px solid ButtonShadow !important';
+				popupLink.style.cssText += 'color: ButtonText !important';
 				popupLink.style.cssText += 'font: small-caption !important';
+				popupLink.style.cssText += 'padding: .15em .5em !important';
 			}
 			else {
 				popupLink.style.cssText += 'color: #00e !important';
@@ -316,11 +354,15 @@
 			element.style.cssText = 'background: transparent !important';
 			element.style.cssText += 'border: none !important';
 			element.style.cssText += 'border-radius: 0 !important';
+			if (element.tagName.toLowerCase() == 'a')
+				element.style.cssText += 'cursor: pointer !important';
 		}
+		else element.style.cssText += 'cursor: auto !important';
 		element.style.cssText += 'bottom: auto !important';
 		element.style.cssText += 'box-shadow: none !important';
 		element.style.cssText += 'color: WindowText !important';
 		element.style.cssText += 'font: medium serif !important';
+		element.style.cssText += 'letter-spacing: 0 !important';
 		element.style.cssText += 'line-height: normal !important';
 		element.style.cssText += 'margin: 0 !important';
 		element.style.cssText += 'opacity: 1 !important';
