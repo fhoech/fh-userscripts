@@ -10,7 +10,9 @@
 	var BLOCK_MODE = {'ALL': 0,  // Block all popups
 										'CONFIRM': 2,  // Confirm each popup (not recommended, but useful for testing)
 										'GRANT_PERIOD': 4,  // Block popups that are initiated after the mouse click grant period
-										'INSECURE': 8}  // Block popups from insecure (HTTP) sites
+										'ALLOW_SECURE': 8,  // Allow popups from secure (HTTPS) sites (default don't allow)
+										'ALLOW_REDIRECTS': 16,  // Allow unsolicited redirects (default block)
+										'CONFIRM_UNLOAD': 32}  // Confirm assumed unsolicited page unload (default don't confirm)
 
 	// Configuration
 	var block_mode = BLOCK_MODE.ALL;
@@ -34,7 +36,7 @@
 	}
 
 	function protocol_allowed() {
-		return block_mode & BLOCK_MODE.INSECURE ? location.protocol == 'https:' : false;
+		return block_mode & BLOCK_MODE.ALLOW_SECURE ? location.protocol == 'https:' : false;
 	}
 
 	function element_allowed(element) {
@@ -110,7 +112,7 @@
 	};
 
 	// Deny unsolicited redirection
-	if (typeof window.location.watch == 'function') window.location.watch(
+	if (!(block_mode & BLOCK_MODE.ALLOW_REDIRECTS) && typeof window.location.watch == 'function') window.location.watch(
 		'href',
 		function (id, oldval, newval) {
 			var href_boileddown, newval_boileddown = boildown(newval);
@@ -122,7 +124,7 @@
 				
 			if (debug) {
 				console.info('Page secure?', location.protocol == 'https:');
-				if (block_mode & BLOCK_MODE.INSECURE) console.info('Allowed protocol?', protocol_allowed());
+				if (block_mode & BLOCK_MODE.ALLOW_SECURE) console.info('Allowed protocol?', protocol_allowed());
 				console.info('Last interacted element?', lastInteractedElement);
 				if (lastInteractedElement) {
 					console.info('Last interacted element tag name?', lastInteractedElement.tagName);
@@ -155,7 +157,7 @@
 	);
 
 	var onbeforeunload = window.onbeforeunload;
-	window.onbeforeunload = function (e) {
+	if (block_mode & BLOCK_MODE.CONFIRM_UNLOAD) window.onbeforeunload = function (e) {
 		if (debug) console.info('window.', e);
 		// Check if the last interacted element was a link or button, otherwise make browser ask if the user really wants to leave the page
 		if (lastInteractedElement &&
@@ -163,7 +165,7 @@
 				!protocol_allowed() && grantperiod_exceeded()) {
 			if (debug) {
 				console.info('Page secure?', location.protocol == 'https:');
-				if (block_mode & BLOCK_MODE.INSECURE) console.info('Allowed protocol?', protocol_allowed());
+				if (block_mode & BLOCK_MODE.ALLOW_SECURE) console.info('Allowed protocol?', protocol_allowed());
 					console.info('Last interacted element?', lastInteractedElement);
 					if (lastInteractedElement) {
 						console.info('Last interacted element tag name?', lastInteractedElement.tagName);
@@ -203,7 +205,7 @@
 		var oargs = arguments;
 		if (debug) {
 			console.info('Page secure?', location.protocol == 'https:');
-			if (block_mode & BLOCK_MODE.INSECURE) console.info('Allowed protocol?', protocol_allowed());
+			if (block_mode & BLOCK_MODE.ALLOW_SECURE) console.info('Allowed protocol?', protocol_allowed());
 			if (block_mode & BLOCK_MODE.GRANT_PERIOD) console.info('Grant period exceeded?', grantperiod_exceeded());
 		}
 		if (/*['_self', '_parent', '_top'].includes(arguments[1]) ||*/
@@ -225,7 +227,7 @@
 	window.showModalDialog = function () {
 		if (debug) {
 			console.info('Page secure?', location.protocol == 'https:');
-			if (block_mode & BLOCK_MODE.INSECURE) console.info('Allowed protocol?', protocol_allowed());
+			if (block_mode & BLOCK_MODE.ALLOW_SECURE) console.info('Allowed protocol?', protocol_allowed());
 			if (block_mode & BLOCK_MODE.GRANT_PERIOD) console.info('Grant period exceeded?', grantperiod_exceeded());
 		}
 		if (confirmed('Allow modal dialog?', arguments) &&
