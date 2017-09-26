@@ -158,10 +158,7 @@
 	var onbeforeunload = window.onbeforeunload;
 	if (block_mode & BLOCK_MODE.CONFIRM_UNLOAD) window.onbeforeunload = function (e) {
 		if (debug) console.info('window.', e);
-		// Check if the last interacted element was a link or button, otherwise make browser ask if the user really wants to leave the page
-		if (lastInteractedElement &&
-				!element_allowed(lastInteractedElement) &&
-				!protocol_allowed() && grantperiod_exceeded()) {
+		if (!protocol_allowed()) {
 			if (debug) {
 				console.info('Page secure?', location.protocol == 'https:');
 				if (block_mode & BLOCK_MODE.ALLOW_SECURE) console.info('Allowed protocol?', protocol_allowed());
@@ -182,19 +179,19 @@
 			return onbeforeunload.apply(window, arguments);
 	};
 
-	var onkeydown = window.onkeydown;
-	window.onkeydown = function (e) {
-		lastInteractedElement = null;
-		if (typeof onkeydown === 'function')
-			return onkeydown.apply(window, arguments);
-	};
+	//var onkeydown = window.onkeydown;
+	//window.onkeydown = function (e) {
+		//lastInteractedElement = null;
+		//if (typeof onkeydown === 'function')
+			//return onkeydown.apply(window, arguments);
+	//};
 
-	var onmouseleave = document.body.onmouseleave;
-	document.body.onmouseleave = function (e) {
-		lastInteractedElement = null;
-		if (typeof onmouseleave === 'function')
-			return onmouseleave.apply(document.body, arguments);
-	};
+	//var onmouseleave = document.body.onmouseleave;
+	//document.body.onmouseleave = function (e) {
+		//lastInteractedElement = null;
+		//if (typeof onmouseleave === 'function')
+			//return onmouseleave.apply(document.body, arguments);
+	//};
 
 	function confirmPopup(msg, args) {
 		return confirm(msg + ' (' + Array.prototype.slice.apply(arguments).join(', ') + ')');
