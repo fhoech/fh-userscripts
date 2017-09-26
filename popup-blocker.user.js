@@ -141,13 +141,12 @@
 				}
 				if (block_mode & BLOCK_MODE.GRANT_PERIOD) console.info('Grant period exceeded?', grantperiod_exceeded());
 			}
-			if (!protocol_allowed() &&
+			if ((!protocol_allowed() || grantperiod_exceeded()) &&
 				(!lastInteractedElement ||
 				 (!element_allowed(lastInteractedElement) ||
 				  (/*lastInteractedElement.tagName.toLowerCase() == 'a' &&*/
 				   (link_hijacked ||
-				    lastInteractedElement.target == '_blank'))) ||
-				 grantperiod_exceeded())) {
+				    lastInteractedElement.target == '_blank'))))) {
 				notify('Denied redirection to', newval, null, 0, null, '_self');
 				console.error('Pop-Up Blocker denied redirection to ' + newval);
 				return '#' + location.hash.replace(/^#/, '');
