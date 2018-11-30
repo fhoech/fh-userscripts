@@ -4,6 +4,8 @@
 // @description Simple but effective popup window blocker. Also tries to deny unsolicited redirections.
 // @include     *
 // @version     $Id$
+// @grant       none
+// @run-at      document-start
 // ==/UserScript==
 
 (function () {
@@ -17,7 +19,7 @@
 	// Configuration
 	var block_mode = BLOCK_MODE.ALL;
 	var grant_period = 100;  // Milliseconds
-	var debug = true;  // Enable debug logging
+	var debug = false;  // Enable debug logging
 
 	// DO NOT CHANGE BELOW THIS POINT
 	var allowed_elements = {'a': true, 'button': {'type': 'submit'}, 'input': true, 'select': true, 'option': true};
